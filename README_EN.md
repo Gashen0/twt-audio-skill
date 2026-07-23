@@ -2,9 +2,9 @@
 
 # 🎙️ twt-audio-mcp
 
-### Twitter/X Tweet → Audio · One-Click Generation
+### Your AI Storyteller: drop a tweet link, AI reads it aloud
 
-**Give any AI assistant an "ear": drop a tweet link, get an audio file back**
+**Works with any MCP-compatible AI assistant — Claude / Cursor / OpenClaw / Cline**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
@@ -22,11 +22,11 @@
 
 ## 💡 Why?
 
-> **"Found a great thread but my eyes are tired."**
-> **"Long read on the commute — can't stare at a screen."**
-> **"Your AI assistant should be able to read tweets aloud."**
+> **Found a great thread but your eyes are tired?**
+> **Long read on the commute — can't stare at a screen?**
+> **Cooking, working out, or in bed — wish you could *listen* to tweets?**
 
-**twt-audio-mcp** is an MCP tool that converts any Twitter/X tweet (including long-form Articles) into MP3 audio. Supports Chinese and English, uses free Edge-TTS, no paid API required.
+**twt-audio-mcp** gives your AI assistant one more skill: grab any Twitter/X tweet (including long-form Articles), turn it into MP3, and read it aloud. No paid APIs, fully free.
 
 ---
 
@@ -34,13 +34,13 @@
 
 | Feature | Description |
 |---------|-------------|
-| **📥 Tweet Fetching** | Regular tweets + Article long-forms, full text extraction |
-| **🔊 TTS** | Free Edge-TTS MP3 generation, auto language detection |
-| **📋 Audio Library** | Local storage with list/send/delete commands |
-| **🔄 Dedup** | Same tweet won't be downloaded twice |
-| **🧩 MCP Protocol** | Works with any MCP-compatible client |
-| **🖥️ CLI Mode** | Use without MCP client if preferred |
-| **⚡ One-Click Setup** | `bash setup.sh` does it all |
+| **📥 Full Text** | Regular tweets + Articles, full content extraction |
+| **🔊 AI Narration** | Free Edge-TTS MP3, auto language detection (CN/EN) |
+| **📋 Audio Library** | Local storage with list/send/delete |
+| **🔄 Dedup** | Same tweet won't be generated twice |
+| **🧩 MCP Protocol** | Works with any MCP-compatible AI assistant |
+| **🖥️ CLI Mode** | Works without MCP client if preferred |
+| **⚡ One-Click** | `bash setup.sh` does it all |
 
 ### Performance
 
@@ -100,7 +100,7 @@ Edit `data/secrets/x_cookies.json`:
 }
 ```
 
-#### 🟢 Cursor / Cline / Continue
+#### 🟢 Cursor / Cline / OpenClaw / Continue
 
 Same configuration pattern.
 
@@ -110,8 +110,8 @@ Same configuration pattern.
 
 ### With AI Assistant (MCP Mode)
 
-> "Convert this tweet to audio: https://x.com/elonmusk/status/1234567890"
-> "List my audio library"
+> "Read this tweet to me: https://x.com/elonmusk/status/1234567890"
+> "What's in my audio library?"
 > "Send me audio #3"
 
 5 built-in tools:
