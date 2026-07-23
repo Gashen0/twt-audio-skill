@@ -238,7 +238,7 @@ twitter:
 
 ### 踩坑记录
 
-- 飞书上传不支持中文文件名 — 用 pypinyin 转拼音
+- 中文文件名在某些上传接口不兼容 — 用 pypinyin 转拼音
 - Article 推文需要两次 GraphQL 请求 — `TweetDetail` 只返回摘要
 - GraphQL queryId 会过期 — 从 X 的 JS bundle 提取，更新 config.yaml
 - Cookie 认证比 Bearer token 稳定 — Bearer token 公开但限流严格

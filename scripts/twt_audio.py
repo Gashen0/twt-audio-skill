@@ -6,7 +6,7 @@ Twitter-to-Audio Pipeline
 Usage:
  python3 twt_audio.py add <tweet_url_or_id>     抓取推文并生成音频
  python3 twt_audio.py list                       列出音频库
- python3 twt_audio.py send <name_or_number>      输出音频文件路径(供飞书发送)
+ python3 twt_audio.py send <name_or_number>      输出音频文件路径
  python3 twt_audio.py delete <name_or_number>    删除音频
 """
 
@@ -105,9 +105,9 @@ def _sanitize_filename(name: str) -> str:
 
 
 def _cjk_to_ascii(cjk_name: str) -> str:
-    """Convert CJK display name to ASCII filename for Feishu upload.
+    """Convert CJK display name to ASCII filename for upload compatibility.
 
-    Feishu upload API rejects non-ASCII filenames (40009 error).
+    Some upload APIs reject non-ASCII filenames (40009 error).
     Strategy: pypinyin (pinyin romanization) → extract English words → hash fallback.
     """
     try:
@@ -168,9 +168,9 @@ def _generate_name(text: str, author: str = "", article_title: str = "") -> str:
 
 
 def _generate_ascii_name(display_name: str, text: str = "", article_title: str = "") -> str:
-    """Generate ASCII filename for Feishu upload compatibility.
+    """Generate ASCII filename for upload compatibility.
 
-    CRITICAL: Feishu /im/v1/files rejects non-ASCII filenames with 40009.
+    CRITICAL: Some upload APIs reject non-ASCII filenames with 40009.
     The ASCII filename must meaningfully describe the content.
     """
     if article_title and re.match(r'^[a-zA-Z0-9\s\-_.,!?\'"]+$', article_title):
@@ -263,13 +263,13 @@ def cmd_add(tweet_input: str, voice: str = None, ascii_name_override: str = None
         2. Check for duplicate BEFORE fetching (avoid wasted API call)
         3. Fetch tweet via GraphQL
         4. Generate display name and ASCII filename
-        5. Generate mp3 audio via edge-tts (no ogg conversion needed)
+        5. Generate mp3 audio via edge-tts
         6. Save to index
 
     Args:
         tweet_input: Tweet URL or numeric ID.
         voice: TTS voice override (e.g. 'zh-CN-YunxiNeural').
-        ascii_name_override: Override ASCII filename for Feishu upload.
+        ascii_name_override: Override ASCII filename for upload compatibility.
         rate: TTS speech rate override (e.g. '+0%', '+50%').
     """
     # 1. Extract tweet ID (cheap, do first)
@@ -328,9 +328,7 @@ def cmd_add(tweet_input: str, voice: str = None, ascii_name_override: str = None
         ascii_name = f"{base_ascii}_{counter}"
         counter += 1
 
-    # 5. Generate audio (mp3 only — no ogg conversion needed)
-    #    send_voice now routes to send_document, mp3 files display as
-    #    file attachments in Feishu (downloadable/previewable).
+    # 5. Generate audio (mp3 only)
     selected_voice = _get_voice(text, voice)
     tts_rate = rate or DEFAULT_TTS_RATE
     mp3_path = AUDIO_DIR / f"{ascii_name}.mp3"
@@ -542,7 +540,7 @@ def main():
     add_parser = subparsers.add_parser("add", help="Fetch tweet and generate audio")
     add_parser.add_argument("input", help="Tweet URL or ID")
     add_parser.add_argument("--voice", help="TTS voice override")
-    add_parser.add_argument("--ascii-name", help="Override ASCII filename (for Feishu upload)")
+    add_parser.add_argument("--ascii-name", help="Override ASCII filename (for upload compatibility)")
     add_parser.add_argument(
         "--rate",
         help=f"TTS speech rate (default: {DEFAULT_TTS_RATE}, e.g. +0%% for normal, +50%% for very fast)",

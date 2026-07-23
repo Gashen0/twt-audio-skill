@@ -1,13 +1,13 @@
 """
-twt-audio-mcp: Twitter推文转音频 MCP Server
-===============================================
+twt-audio-mcp: Twitter Tweet to Audio MCP Server
+=================================================
 
-把 X/Twitter 推文转成语音音频的 MCP 工具。
-任何支持 MCP 的客户端（Claude Desktop、Cursor、Cline 等）都能用。
+Convert X/Twitter tweets to audio via MCP protocol.
+Works with any MCP-compatible client (Claude Desktop, Cursor, Cline, OpenClaw, etc.)
 
 Usage:
-    # 通过 MCP 客户端连接（推荐）
-    # 在客户端 MCP 配置中添加:
+    # Via MCP client (recommended)
+    # Add to your MCP client config:
     {
         "mcpServers": {
             "twt-audio": {
@@ -17,14 +17,14 @@ Usage:
         }
     }
 
-    # 或直接运行
+    # Or run directly
     python -m scripts.server
 """
 
 import sys
 import os
 
-# 确保项目根目录在 path 中
+# Ensure project root is on the path
 _PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_DIR not in sys.path:
     sys.path.insert(0, _PROJECT_DIR)
@@ -34,10 +34,8 @@ import json
 from pathlib import Path
 from typing import Optional
 
-# pip install fastmcp
 from fastmcp import FastMCP
 
-# 导入内部模块
 from scripts.twt_read import read_tweet, extract_tweet_id, load_cookies
 from scripts.twt_audio import (
     cmd_add, cmd_list, cmd_send, cmd_delete,
@@ -57,15 +55,14 @@ mcp = FastMCP(
 
 @mcp.tool()
 def tweet_to_audio(tweet_url: str) -> str:
-    """抓取推文并生成音频文件
+    """Fetch a tweet and generate audio file
 
     Args:
-        tweet_url: 推文 URL 或 ID（如 https://x.com/user/status/1234567890）
+        tweet_url: Tweet URL or ID (e.g. https://x.com/user/status/1234567890)
 
     Returns:
-        生成结果，包含音频文件路径、时长、作者等信息
+        Result with file path, duration, author info
     """
-    # cmd_add 会打印到 stdout，我们捕获输出
     import io
     from contextlib import redirect_stdout
 
@@ -78,19 +75,19 @@ def tweet_to_audio(tweet_url: str) -> str:
 
     output = f.getvalue()
 
-    # 尝试解析最后的 JSON
+    # Try to parse the trailing JSON
     json_marker = "__JSON_OUTPUT__"
     if json_marker in output:
         json_str = output.split(json_marker)[1].strip()
         try:
             data = json.loads(json_str)
             if data.get("duplicate"):
-                return f"⚠️ 已存在: {data['name']} ({data['duration_str']})"
+                return f"Already exists: {data['name']} ({data['duration_str']})"
             return (
-                f"✅ 音频已生成: {data['name']}\n"
-                f"   作者: {data.get('author', '未知')}\n"
-                f"   时长: {data['duration_str']}\n"
-                f"   文件: {data['file']}"
+                f"Audio generated: {data['name']}\n"
+                f"   Author: {data.get('author', 'unknown')}\n"
+                f"   Duration: {data['duration_str']}\n"
+                f"   File: {data['file']}"
             )
         except json.JSONDecodeError:
             pass
@@ -100,14 +97,14 @@ def tweet_to_audio(tweet_url: str) -> str:
 
 @mcp.tool()
 def list_audios() -> str:
-    """列出音频库中的所有音频"""
+    """List all audios in the library"""
     index = _load_index()
     audios = index.get("audios", [])
 
     if not audios:
-        return "📭 音频库为空"
+        return "Audio library is empty"
 
-    lines = [f"📚 音频库 ({len(audios)}条)\n"]
+    lines = [f"Audio library ({len(audios)} items)\n"]
     for i, audio in enumerate(audios, 1):
         dur = _format_duration(audio.get("duration", 0))
         author = audio.get("author", "")
@@ -122,13 +119,13 @@ def list_audios() -> str:
 
 @mcp.tool()
 def get_audio_path(index_or_name: str) -> str:
-    """获取音频文件的完整路径
+    """Get the full path of an audio file
 
     Args:
-        index_or_name: 音频编号（如 1）或名称
+        index_or_name: Audio index (e.g. 1) or name
 
     Returns:
-        音频文件路径，可用于发送/分享
+        Audio file path
     """
     import io
     from contextlib import redirect_stdout
@@ -142,13 +139,13 @@ def get_audio_path(index_or_name: str) -> str:
 
     output = f.getvalue()
 
-    # 尝试解析最后的 JSON
+    # Try to parse the trailing JSON
     json_marker = "__JSON_OUTPUT__"
     if json_marker in output:
         json_str = output.split(json_marker)[1].strip()
         try:
             data = json.loads(json_str)
-            return f"📤 {data['name']}\n📁 {data['file']}"
+            return f"{data['name']}\n{data['file']}"
         except json.JSONDecodeError:
             pass
 
@@ -157,13 +154,13 @@ def get_audio_path(index_or_name: str) -> str:
 
 @mcp.tool()
 def delete_audio(index_or_name: str) -> str:
-    """删除音频库中的某条音频
+    """Delete an audio from the library
 
     Args:
-        index_or_name: 音频编号（如 1）或名称
+        index_or_name: Audio index (e.g. 1) or name
 
     Returns:
-        删除结果
+        Result message
     """
     import io
     from contextlib import redirect_stdout
@@ -180,7 +177,7 @@ def delete_audio(index_or_name: str) -> str:
 
 @mcp.tool()
 def check_status() -> str:
-    """检查 twt-audio-mcp 配置状态 — 是否已配置 Twitter Cookie"""
+    """Check twt-audio-mcp configuration status — Twitter Cookie & dependencies"""
     try:
         cookies = load_cookies()
         auth_token = cookies.get("auth_token", "")
@@ -197,13 +194,13 @@ def check_status() -> str:
 
         if missing:
             return (
-                "❌ Cookie 配置不完整\n"
-                f"   缺少: {', '.join(missing)}\n"
-                f"   配置文件: {Path(__file__).parent.parent / 'data' / 'secrets' / 'x_cookies.json'}\n"
-                "   从浏览器 X.com 登录后复制 auth_token, ct0, twid"
+                "Cookie config incomplete\n"
+                f"   Missing: {', '.join(missing)}\n"
+                f"   Config: {Path(__file__).parent.parent / 'data' / 'secrets' / 'x_cookies.json'}\n"
+                "   Login to X.com in browser, copy auth_token, ct0, twid from DevTools"
             )
 
-        # 检查 TTS 依赖
+        # Check TTS dependency
         try:
             import edge_tts
             edge_ok = True
@@ -213,26 +210,26 @@ def check_status() -> str:
         audio_count = len(_load_index().get("audios", []))
 
         parts = [
-            "✅ twt-audio-mcp 状态",
-            f"   Twitter Cookie: ✅ 已配置",
-            f"   Edge-TTS: {'✅' if edge_ok else '❌'} {'已安装' if edge_ok else '未安装 (pip install edge-tts)'}",
-            f"   音频库: {audio_count} 条",
-            f"   数据目录: {AUDIO_DIR}",
+            "twt-audio-mcp status",
+            f"   Twitter Cookie: configured",
+            f"   Edge-TTS: {'installed' if edge_ok else 'missing (pip install edge-tts)'}",
+            f"   Audio library: {audio_count} items",
+            f"   Data dir: {AUDIO_DIR}",
         ]
 
         return "\n".join(parts)
     except FileNotFoundError:
         return (
-            "❌ Cookie 文件未找到\n"
-            f"   路径: {Path(__file__).parent.parent / 'data' / 'secrets' / 'x_cookies.json'}\n"
-            "   从浏览器 X.com 登录后复制 cookie"
+            "Cookie file not found\n"
+            f"   Path: {Path(__file__).parent.parent / 'data' / 'secrets' / 'x_cookies.json'}\n"
+            "   Login to X.com in browser, copy cookies"
         )
 
 
 # =========================================================================
-# 主入口
+# Entry point
 # =========================================================================
 
 if __name__ == "__main__":
-    print("🚀 twt-audio-mcp server starting...")
+    print("twt-audio-mcp server starting...")
     mcp.run()
