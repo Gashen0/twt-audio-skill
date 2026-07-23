@@ -6,19 +6,6 @@
 #   bash setup.sh              # 安装依赖 + 创建目录
 #   bash setup.sh --check      # 检查安装状态
 #   bash setup.sh --cookie     # 引导配置 Twitter Cookie
-#
-# 安装后:
-#   1. 在 data/secrets/x_cookies.json 填入 Twitter Cookie
-#   2. 在 MCP 客户端配置中添加:
-#      {
-#          "mcpServers": {
-#              "twt-audio": {
-#                  "command": "python",
-#                  "args": ["-m", "scripts.server"],
-#                  "cwd": "<项目绝对路径>"
-#              }
-#          }
-#      }
 # ===============================================================
 
 set -e
@@ -50,15 +37,15 @@ if [ "$1" = "--check" ]; then
         fi
     done
 
-    # fastmcp (可选，只有用MCP模式时需要)
+    # fastmcp
     if python3 -c "from fastmcp import FastMCP" 2>/dev/null; then
         echo "  ✅ fastmcp (MCP模式可用)"
     else
-        echo "  ⚠️  fastmcp (CLI模式可用，MCP模式需 pip install fastmcp)"
+        echo "  ⚠  fastmcp (CLI模式可用，MCP模式需 pip install fastmcp)"
     fi
 
     # Cookie
-    COOKIE_FILE="$PROJECT_DIR/data/secrets/x_cookies.json"
+    COOKIE_FILE="${PROJECT_DIR}/data/secrets/x_cookies.json"
     if [ -f "$COOKIE_FILE" ]; then
         echo "  ✅ Twitter Cookie: 已配置"
     else
@@ -67,7 +54,7 @@ if [ "$1" = "--check" ]; then
     fi
 
     # 数据目录
-    mkdir -p "$PROJECT_DIR/data/twts" "$PROJECT_DIR/data/secrets"
+    mkdir -p "${PROJECT_DIR}/data/twts" "${PROJECT_DIR}/data/secrets"
     echo "  ✅ 数据目录: 已就绪"
     echo ""
     echo "💡 如已全部通过，可将项目路径加入 MCP 客户端配置"
@@ -75,7 +62,7 @@ if [ "$1" = "--check" ]; then
 fi
 
 if [ "$1" = "--cookie" ]; then
-    COOKIE_FILE="$PROJECT_DIR/data/secrets/x_cookies.json"
+    COOKIE_FILE="${PROJECT_DIR}/data/secrets/x_cookies.json"
     echo "🍪 Twitter Cookie 配置"
     echo ""
     echo "请从浏览器 (chrome://settings/cookies) 或 EditThisCookie 扩展导出"
@@ -86,18 +73,18 @@ if [ "$1" = "--cookie" ]; then
     echo "  3. twid        — 用户ID"
     echo ""
 
-    read -p "auth_token: " AUTH_TOKEN
-    read -p "ct0: " CT0
-    read -p "twid: " TWID
+    read -p "auth_token: " AUTH_TOKEN_VAL
+    read -p "ct0: " CT0_VAL
+    read -p "twid: " TWID_VAL
 
     mkdir -p "$(dirname "$COOKIE_FILE")"
-    cat > "$COOKIE_FILE" <<EOF
+    cat > "$COOKIE_FILE" <<COOKIEEOF
 {
-  "auth_token": "$AUTH_TOKEN",
-  "ct0": "$CT0",
-  "twid": "$TWID"
+  "auth_token": "${AUTH_TOKEN_VAL}",
+  "ct0": "${CT0_VAL}",
+  "twid": "${TWID_VAL}"
 }
-EOF
+COOKIEEOF
     echo ""
     echo "✅ Cookie 已保存到: $COOKIE_FILE"
     echo ""
@@ -109,14 +96,10 @@ fi
 echo "📥 安装 Python 依赖..."
 echo ""
 
-# 安装依赖
 pip install -r requirements.txt -q 2>/dev/null || pip3 install -r requirements.txt -q 2>/dev/null
-
-# 安装 fastmcp (MCP模式)
 pip install fastmcp -q 2>/dev/null || pip3 install fastmcp -q 2>/dev/null
 
-# 创建数据目录
-mkdir -p "$PROJECT_DIR/data/twts" "$PROJECT_DIR/data/secrets"
+mkdir -p "${PROJECT_DIR}/data/twts" "${PROJECT_DIR}/data/secrets"
 
 echo ""
 echo "✅ 安装完成!"

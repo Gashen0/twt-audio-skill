@@ -1,119 +1,63 @@
-"""
-twt-audio-mcp: Twitter Tweet to Audio MCP Server
-=================================================
-
-Convert X/Twitter tweets to audio via MCP protocol.
-Works with any MCP-compatible client (Claude Desktop, Cursor, Cline, OpenClaw, etc.)
-
-Usage:
-    # Via MCP client (recommended)
-    # Add to your MCP client config:
-    {
-        "mcpServers": {
-            "twt-audio": {
-                "command": "python",
-                "args": ["-m", "scripts.server"]
-            }
-        }
-    }
-
-    # Or run directly
-    python -m scripts.server
-"""
+"""twt-audio-mcp: MCP Server — 薄协议层，调用 core，不 redirect_stdout。"""
 
 import sys
 import os
-
-# Ensure project root is on the path
-_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _PROJECT_DIR not in sys.path:
-    sys.path.insert(0, _PROJECT_DIR)
-
-import asyncio
-import json
 from pathlib import Path
-from typing import Optional
+
+_PROJECT_DIR = Path(__file__).resolve().parent.parent
+if str(_PROJECT_DIR) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_DIR))
+
+import json
 
 from fastmcp import FastMCP
 
-from scripts.twt_read import read_tweet, extract_tweet_id, load_cookies
-from scripts.twt_audio import (
-    cmd_add, cmd_list, cmd_send, cmd_delete,
-    _load_index, _format_duration, _now_cst,
-    AUDIO_DIR, INDEX_PATH,
-)
+from scripts.twt_core import TwtAudioCore, CoreError
 
+# =========================================================================
+# Core 单例
+# =========================================================================
+
+_core = TwtAudioCore(_PROJECT_DIR)
 
 # =========================================================================
 # MCP Server
 # =========================================================================
 
-mcp = FastMCP(
-    "twt-audio",
-)
+mcp = FastMCP("twt-audio")
 
 
 @mcp.tool()
 def tweet_to_audio(tweet_url: str) -> str:
-    """Fetch a tweet and generate audio file
+    """Fetch a tweet and generate an audio file.
 
     Args:
         tweet_url: Tweet URL or ID (e.g. https://x.com/user/status/1234567890)
 
     Returns:
-        Result with file path, duration, author info
+        Structured result with file path, duration, author info
     """
-    import io
-    from contextlib import redirect_stdout
-
-    f = io.StringIO()
-    with redirect_stdout(f):
-        try:
-            cmd_add(tweet_url)
-        except SystemExit:
-            pass
-
-    output = f.getvalue()
-
-    # Try to parse the trailing JSON
-    json_marker = "__JSON_OUTPUT__"
-    if json_marker in output:
-        json_str = output.split(json_marker)[1].strip()
-        try:
-            data = json.loads(json_str)
-            if data.get("duplicate"):
-                return f"Already exists: {data['name']} ({data['duration_str']})"
-            return (
-                f"Audio generated: {data['name']}\n"
-                f"   Author: {data.get('author', 'unknown')}\n"
-                f"   Duration: {data['duration_str']}\n"
-                f"   File: {data['file']}"
-            )
-        except json.JSONDecodeError:
-            pass
-
-    return output
+    result = _core.add_tweet(tweet_url)
+    if not result.success:
+        return f"Error: {result.error}"
+    if result.duplicate:
+        return f"Already exists: {result.name} ({result.duration_str})"
+    return json.dumps(result.to_dict(), ensure_ascii=False)
 
 
 @mcp.tool()
 def list_audios() -> str:
     """List all audios in the library"""
-    index = _load_index()
-    audios = index.get("audios", [])
-
+    audios = _core.list_audios()
     if not audios:
         return "Audio library is empty"
-
     lines = [f"Audio library ({len(audios)} items)\n"]
-    for i, audio in enumerate(audios, 1):
-        dur = _format_duration(audio.get("duration", 0))
-        author = audio.get("author", "")
-        author_str = f" @{author}" if author else ""
-        created = audio.get("created_at", "")
-        name = audio.get("name", audio.get("ascii_name", ""))
-        lines.append(f"{i}. {name}")
-        lines.append(f"   {dur}{author_str} · {created}")
-
+    for a in audios:
+        author_str = f" @{a['author']}" if a.get("author") else ""
+        created = a.get("created_at", "")
+        name = a.get("name", a.get("ascii_name", ""))
+        lines.append(f"{a['index']}. {name}")
+        lines.append(f"   {a['duration_str']}{author_str} · {created}")
     return "\n".join(lines)
 
 
@@ -127,29 +71,13 @@ def get_audio_path(index_or_name: str) -> str:
     Returns:
         Audio file path
     """
-    import io
-    from contextlib import redirect_stdout
-
-    f = io.StringIO()
-    with redirect_stdout(f):
-        try:
-            cmd_send(index_or_name)
-        except SystemExit:
-            pass
-
-    output = f.getvalue()
-
-    # Try to parse the trailing JSON
-    json_marker = "__JSON_OUTPUT__"
-    if json_marker in output:
-        json_str = output.split(json_marker)[1].strip()
-        try:
-            data = json.loads(json_str)
-            return f"{data['name']}\n{data['file']}"
-        except json.JSONDecodeError:
-            pass
-
-    return output
+    try:
+        audio = _core.get_audio(index_or_name)
+    except CoreError as e:
+        return f"Error: {e}"
+    path = audio.get("send_file") or audio["file"]
+    name = audio.get("name", audio.get("ascii_name", ""))
+    return f"{name}\n{path}"
 
 
 @mcp.tool()
@@ -162,68 +90,39 @@ def delete_audio(index_or_name: str) -> str:
     Returns:
         Result message
     """
-    import io
-    from contextlib import redirect_stdout
-
-    f = io.StringIO()
-    with redirect_stdout(f):
-        try:
-            cmd_delete(index_or_name)
-        except SystemExit:
-            pass
-
-    return f.getvalue().strip()
+    try:
+        audio = _core.delete_audio(index_or_name)
+    except CoreError as e:
+        return f"Error: {e}"
+    name = audio.get("name", audio.get("ascii_name", ""))
+    return f"Deleted: {name}"
 
 
 @mcp.tool()
 def check_status() -> str:
-    """Check twt-audio-mcp configuration status — Twitter Cookie & dependencies"""
-    try:
-        cookies = load_cookies()
-        auth_token = cookies.get("auth_token", "")
-        ct0 = cookies.get("ct0", "")
-        twid = cookies.get("twid", "")
+    """Check twt-audio-mcp configuration — Twitter Cookie & dependencies"""
+    status = _core.check_config()
 
-        missing = []
-        if not auth_token:
-            missing.append("auth_token")
-        if not ct0:
-            missing.append("ct0")
-        if not twid:
-            missing.append("twid")
-
-        if missing:
-            return (
-                "Cookie config incomplete\n"
-                f"   Missing: {', '.join(missing)}\n"
-                f"   Config: {Path(__file__).parent.parent / 'data' / 'secrets' / 'x_cookies.json'}\n"
-                "   Login to X.com in browser, copy auth_token, ct0, twid from DevTools"
-            )
-
-        # Check TTS dependency
-        try:
-            import edge_tts
-            edge_ok = True
-        except ImportError:
-            edge_ok = False
-
-        audio_count = len(_load_index().get("audios", []))
-
-        parts = [
-            "twt-audio-mcp status",
-            f"   Twitter Cookie: configured",
-            f"   Edge-TTS: {'installed' if edge_ok else 'missing (pip install edge-tts)'}",
-            f"   Audio library: {audio_count} items",
-            f"   Data dir: {AUDIO_DIR}",
-        ]
-
+    if status["ok"]:
+        parts = ["twt-audio-mcp status"]
+        for name, check in status["checks"].items():
+            if check.get("ok"):
+                if "count" in check:
+                    parts.append(f"   ✅ {name}: {check['count']} items")
+                else:
+                    parts.append(f"   ✅ {name}")
+            else:
+                parts.append(f"   ❌ {name}: {check['msg']}")
         return "\n".join(parts)
-    except FileNotFoundError:
-        return (
-            "Cookie file not found\n"
-            f"   Path: {Path(__file__).parent.parent / 'data' / 'secrets' / 'x_cookies.json'}\n"
-            "   Login to X.com in browser, copy cookies"
-        )
+    else:
+        parts = ["Configuration incomplete"]
+        for name, check in status["checks"].items():
+            if check.get("ok"):
+                parts.append(f"   ✅ {name}")
+            else:
+                parts.append(f"   ❌ {name}: {check['msg']}")
+        parts.append("\nRun `python scripts/twt_audio.py check` for details")
+        return "\n".join(parts)
 
 
 # =========================================================================
