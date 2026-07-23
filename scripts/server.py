@@ -1,7 +1,6 @@
 """twt-audio-mcp: MCP Server — 薄协议层，调用 core，不 redirect_stdout。"""
 
 import sys
-import os
 from pathlib import Path
 
 _PROJECT_DIR = Path(__file__).resolve().parent.parent
@@ -12,20 +11,15 @@ import json
 
 from fastmcp import FastMCP
 
-from scripts.twt_core import TwtAudioCore, CoreError
+from scripts.core import TwtAudioCore, CoreError
 
-# =========================================================================
-# Core 单例
-# =========================================================================
+# ── 单例 ─────────────────────────────────────────────────────────────
 
 _core = TwtAudioCore(_PROJECT_DIR)
-
-# =========================================================================
-# MCP Server
-# =========================================================================
-
 mcp = FastMCP("twt-audio")
 
+
+# ── Tools ────────────────────────────────────────────────────────────
 
 @mcp.tool()
 def tweet_to_audio(tweet_url: str) -> str:
@@ -53,11 +47,11 @@ def list_audios() -> str:
         return "Audio library is empty"
     lines = [f"Audio library ({len(audios)} items)\n"]
     for a in audios:
-        author_str = f" @{a['author']}" if a.get("author") else ""
+        author = f" @{a['author']}" if a.get("author") else ""
         created = a.get("created_at", "")
         name = a.get("name", a.get("ascii_name", ""))
         lines.append(f"{a['index']}. {name}")
-        lines.append(f"   {a['duration_str']}{author_str} · {created}")
+        lines.append(f"   {a['duration_str']}{author} · {created}")
     return "\n".join(lines)
 
 
@@ -102,32 +96,19 @@ def delete_audio(index_or_name: str) -> str:
 def check_status() -> str:
     """Check twt-audio-mcp configuration — Twitter Cookie & dependencies"""
     status = _core.check_config()
-
-    if status["ok"]:
-        parts = ["twt-audio-mcp status"]
-        for name, check in status["checks"].items():
-            if check.get("ok"):
-                if "count" in check:
-                    parts.append(f"   ✅ {name}: {check['count']} items")
-                else:
-                    parts.append(f"   ✅ {name}")
-            else:
-                parts.append(f"   ❌ {name}: {check['msg']}")
-        return "\n".join(parts)
-    else:
-        parts = ["Configuration incomplete"]
-        for name, check in status["checks"].items():
-            if check.get("ok"):
-                parts.append(f"   ✅ {name}")
-            else:
-                parts.append(f"   ❌ {name}: {check['msg']}")
+    parts = ["twt-audio-mcp status"] if status["ok"] else ["Configuration incomplete"]
+    for name, check in status["checks"].items():
+        icon = "✅" if check.get("ok") else "❌"
+        if "count" in check:
+            parts.append(f"   {icon} {name}: {check['count']} items")
+        elif "msg" in check:
+            parts.append(f"   {icon} {name}: {check['msg']}")
+        else:
+            parts.append(f"   {icon} {name}")
+    if not status["ok"]:
         parts.append("\nRun `python scripts/twt_audio.py check` for details")
-        return "\n".join(parts)
+    return "\n".join(parts)
 
-
-# =========================================================================
-# Entry point
-# =========================================================================
 
 if __name__ == "__main__":
     print("twt-audio-mcp server starting...")

@@ -1,2 +1,1 @@
-#!/usr/bin/env python3
-"""twt-audio skill package."""
+"""scripts — twt-audio-mcp 包入口。"""
