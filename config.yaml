@@ -1,0 +1,24 @@
+# twt-audio-mcp 配置文件
+# 修改此文件即可调整行为，无需改代码
+
+# TTS语音映射（按语言）
+tts:
+  voices:
+    zh: "zh-CN-XiaoxiaoNeural"
+    en: "en-US-JennyNeural"
+  default_rate: "+20%"       # 默认语速（+0%=正常，+20%=稍快，+50%=很快）
+  max_filename_len: 30       # ASCII文件名最大长度
+
+# 数据存储路径（相对于项目 data/ 目录）
+paths:
+  audio_dir: "twts"
+  index_file: "twts/index.json"
+  cookie_file: "secrets/x_cookies.json"
+
+# X/Twitter API
+twitter:
+  tweet_detail_query_id: "_i0BBmP_dK_ZLFa2Y-ei9Q"
+  tweet_result_by_rest_id_query_id: "uEyKTt72BfzaY84WLGC5Dw"
+  bearer: "AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA"
+  rate_limit_seconds: 5       # 请求最小间隔
+  rate_limit_margin: 0.1      # 额外等待余量（秒）

@@ -1,0 +1,23 @@
+# 用户配置
+data/secrets/x_cookies.json
+
+# 音频数据
+data/twts/*.mp3
+data/twts/index.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# 环境
+.env
+.venv
+venv/
+
+# 系统
+.DS_Store
+Thumbs.db
