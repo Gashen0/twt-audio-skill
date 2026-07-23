@@ -78,13 +78,12 @@ if [ "$1" = "--cookie" ]; then
     read -p "twid: " TWID_VAL
 
     mkdir -p "$(dirname "$COOKIE_FILE")"
-    cat > "$COOKIE_FILE" <<COOKIEEOF
-{
-  "auth_token": "${AUTH_TOKEN_VAL}",
-  "ct0": "${CT0_VAL}",
-  "twid": "${TWID_VAL}"
-}
-COOKIEEOF
+    python3 -c "
+import json, sys
+data = {'auth_token': '${AUTH_TOKEN_VAL}', 'ct0': '${CT0_VAL}', 'twid': '${TWID_VAL}'}
+with open('$COOKIE_FILE', 'w') as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+"
     echo ""
     echo "✅ Cookie 已保存到: $COOKIE_FILE"
     echo ""

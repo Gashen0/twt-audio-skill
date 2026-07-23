@@ -43,7 +43,7 @@ FIELD_TOGGLES = {
 
 
 class XClient:
-    """X GraphQL API 封装。每次调用新建 session。"""
+    """X GraphQL API 封装。维护实例级 session 复用 TCP 连接。"""
 
     def __init__(self, bearer: str, tweet_detail_qid: str, tweet_result_qid: str,
                  rate_limit_seconds: int = 5, rate_limit_margin: float = 0.1):
@@ -53,26 +53,29 @@ class XClient:
         self._min_interval = rate_limit_seconds
         self._rate_margin = rate_limit_margin
         self._last_request_time = 0.0
+        self._session: Optional[requests.Session] = None
 
-    # ── Session ─────────────────────────────────────────────────────
+    # ── Session 管理 ───────────────────────────────────────────────
 
     def _make_session(self, cookies: dict) -> requests.Session:
-        session = requests.Session()
-        session.cookies.set("auth_token", cookies["auth_token"], domain=".x.com")
-        session.cookies.set("ct0", cookies["ct0"], domain=".x.com")
-        session.cookies.set("twid", cookies["twid"], domain=".x.com")
-        session.headers.update({
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/136.0.0.0 Safari/537.36"
-            ),
-            "Accept": "*/*",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Authorization": f"Bearer {self._bearer}",
-            "X-Csrf-Token": cookies["ct0"],
-        })
-        return session
+        if self._session is None:
+            self._session = requests.Session()
+            self._session.headers.update({
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/136.0.0.0 Safari/537.36"
+                ),
+                "Accept": "*/*",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Authorization": f"Bearer {self._bearer}",
+            })
+        # Cookie 按需更新（可能每次都不同）
+        self._session.cookies.set("auth_token", cookies["auth_token"], domain=".x.com")
+        self._session.cookies.set("ct0", cookies["ct0"], domain=".x.com")
+        self._session.cookies.set("twid", cookies["twid"], domain=".x.com")
+        self._session.headers["X-Csrf-Token"] = cookies["ct0"]
+        return self._session
 
     def _rate_limit(self):
         now = time.time()
@@ -81,6 +84,27 @@ class XClient:
             wait = self._min_interval - elapsed + self._rate_margin
             time.sleep(wait)
         self._last_request_time = time.time()
+
+    # ── HTTP 请求 + 429 处理 ─────────────────────────────────────────
+
+    def _request(self, method: str, url: str, **kwargs) -> requests.Response:
+        """带 rate limit 和 429 重试的 HTTP 请求。"""
+        session = self._session or requests
+        self._rate_limit()
+        resp = session.request(method, url, **kwargs)
+
+        if resp.status_code == 429:
+            retry_after = resp.headers.get("Retry-After")
+            if retry_after and retry_after.isdigit():
+                wait = int(retry_after)
+            else:
+                wait = 60  # 默认等60秒
+            raise CoreError(f"HTTP 429 Rate Limited — 请在 {wait} 秒后重试")
+
+        if resp.status_code != 200:
+            raise CoreError(f"HTTP {resp.status_code}: {resp.text[:200]}")
+
+        return resp
 
     # ── 推文 ID 提取 ────────────────────────────────────────────────
 
@@ -95,13 +119,15 @@ class XClient:
             return m.group(1)
         raise CoreError(f"无法从输入中提取推文 ID: {input_str}")
 
-    # ── GraphQL 响应解析 ────────────────────────────────────────────
+    # ── GraphQL 响应解析（显式栈，避免递归深度）───────────────────
 
     @staticmethod
     def _find_tweet_results(data) -> list:
+        """用显式栈遍历 JSON，收集所有 __typename == 'Tweet' 的 result。"""
         results = []
-
-        def _walk(obj):
+        stack = [data]
+        while stack:
+            obj = stack.pop()
             if isinstance(obj, dict):
                 if "result" in obj and isinstance(obj["result"], dict):
                     result = obj["result"]
@@ -117,12 +143,9 @@ class XClient:
                         if tweet.get("__typename") == "Tweet":
                             results.append(tweet)
                 for v in obj.values():
-                    _walk(v)
+                    stack.append(v)
             elif isinstance(obj, list):
-                for item in obj:
-                    _walk(item)
-
-        _walk(data)
+                stack.extend(reversed(obj))  # 保持原顺序
         return results
 
     @staticmethod
@@ -141,26 +164,23 @@ class XClient:
                 text_parts = [note_text]
         return text_parts[0] if text_parts else ""
 
-    # ── Article 解析 ────────────────────────────────────────────────
+    # ── Article 解析（显式栈，避免递归深度）────────────────────────
 
     @staticmethod
     def _extract_article_blocks(data) -> list:
+        """用显式栈遍历，收集 Article 的 blocks。"""
         blocks = []
-
-        def _walk(obj, depth=0):
-            if depth > 20:
-                return
+        stack = [data]
+        while stack:
+            obj = stack.pop()
             if isinstance(obj, dict):
                 if "blocks" in obj and isinstance(obj["blocks"], list):
-                    if len(obj["blocks"]) > 5:      # heuristic: 真正的 Article 至少6段
+                    if len(obj["blocks"]) > 5:  # heuristic: 真正的 Article 至少6段
                         blocks.extend(obj["blocks"])
                 for v in obj.values():
-                    _walk(v, depth + 1)
+                    stack.append(v)
             elif isinstance(obj, list):
-                for item in obj:
-                    _walk(item, depth + 1)
-
-        _walk(data)
+                stack.extend(reversed(obj))
         return blocks
 
     @staticmethod
@@ -195,9 +215,9 @@ class XClient:
             "fieldToggles": json.dumps(FIELD_TOGGLES),
         }
         url = f"https://x.com/i/api/graphql/{self._result_qid}/TweetResultByRestId"
-        self._rate_limit()
-        resp = session.get(url, params=params, timeout=30)
-        if resp.status_code != 200:
+        try:
+            resp = self._request("GET", url, params=params, timeout=30)
+        except CoreError:
             return None
         data = resp.json()
         # 检查 API 错误响应
@@ -236,10 +256,7 @@ class XClient:
             "fieldToggles": json.dumps(FIELD_TOGGLES),
         }
         url = f"https://x.com/i/api/graphql/{self._detail_qid}/TweetDetail"
-        self._rate_limit()
-        resp = session.get(url, params=params, timeout=30)
-        if resp.status_code != 200:
-            raise CoreError(f"HTTP {resp.status_code}: {resp.text[:200]}")
+        resp = self._request("GET", url, params=params, timeout=30)
 
         data = resp.json()
         all_tweets = self._find_tweet_results(data)

@@ -13,6 +13,10 @@ if str(_PROJECT_DIR) not in sys.path:
 from scripts.core import TwtAudioCore, CoreError
 
 
+class CliError(Exception):
+    """CLI 使用错误，main 层统一捕获并 exit。"""
+
+
 def cmd_add(core: TwtAudioCore, tweet_input: str, voice=None, ascii_name=None, rate=None):
     result = core.add_tweet(tweet_input, voice, ascii_name, rate)
     if result.duplicate:
@@ -20,8 +24,7 @@ def cmd_add(core: TwtAudioCore, tweet_input: str, voice=None, ascii_name=None, r
     elif result.success:
         print(f"✅ 音频已保存: {result.name} ({result.duration_str})")
     else:
-        print(f"❌ {result.error}", file=sys.stderr)
-        sys.exit(1)
+        raise CliError(result.error)
 
 
 def cmd_list(core: TwtAudioCore):
@@ -42,12 +45,10 @@ def cmd_send(core: TwtAudioCore, identifier: str):
     try:
         audio = core.get_audio(identifier)
     except CoreError as e:
-        print(f"❌ {e}", file=sys.stderr)
-        sys.exit(1)
+        raise CliError(str(e))
     path = audio.get("send_file") or audio["file"]
     if not Path(path).exists():
-        print(f"❌ 文件不存在: {path}", file=sys.stderr)
-        sys.exit(1)
+        raise CliError(f"文件不存在: {path}")
     name = audio.get("name", audio.get("ascii_name", ""))
     print(f"📤 {name}")
     print(f"📁 {path}")
@@ -57,8 +58,7 @@ def cmd_delete(core: TwtAudioCore, identifier: str):
     try:
         audio = core.delete_audio(identifier)
     except CoreError as e:
-        print(f"❌ {e}", file=sys.stderr)
-        sys.exit(1)
+        raise CliError(str(e))
     name = audio.get("name", audio.get("ascii_name", ""))
     del_files = audio.get("_deleted_files", [])
     print(f"🗑️ 已删除: {name}")
@@ -104,18 +104,22 @@ def main():
     args = parser.parse_args()
     core = TwtAudioCore(_PROJECT_DIR)
 
-    if args.command == "add":
-        cmd_add(core, args.input, args.voice, getattr(args, "ascii_name", None), args.rate)
-    elif args.command == "list":
-        cmd_list(core)
-    elif args.command == "send":
-        cmd_send(core, args.identifier)
-    elif args.command == "delete":
-        cmd_delete(core, args.identifier)
-    elif args.command == "check":
-        cmd_check(core)
-    else:
-        parser.print_help()
+    try:
+        if args.command == "add":
+            cmd_add(core, args.input, args.voice, getattr(args, "ascii_name", None), args.rate)
+        elif args.command == "list":
+            cmd_list(core)
+        elif args.command == "send":
+            cmd_send(core, args.identifier)
+        elif args.command == "delete":
+            cmd_delete(core, args.identifier)
+        elif args.command == "check":
+            cmd_check(core)
+        else:
+            parser.print_help()
+    except CliError as e:
+        print(f"❌ {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

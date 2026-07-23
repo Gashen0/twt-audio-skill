@@ -2,6 +2,7 @@
 
 不依赖 config / x_client / tts，只操作 json 和文件系统。"""
 
+import fcntl
 import hashlib
 import json
 import re
@@ -17,22 +18,30 @@ class AudioLibrary:
     """音频库：索引文件读写 + 名称生成 + CRUD。"""
 
     def __init__(self, index_path: str | Path, audio_dir: str | Path, max_filename_len: int = 30):
-        self._index_path = Path(index_path)
-        self._audio_dir = Path(audio_dir)
+        self._index_path = Path(index_path).resolve()
+        self._audio_dir = Path(audio_dir).resolve()
         self._max_fn_len = max_filename_len
 
-    # ── 索引 I/O ────────────────────────────────────────────────────
+    # ── 索引 I/O（带文件锁）─────────────────────────────────────────
 
     def _load(self) -> dict:
         if not self._index_path.exists():
             return {"audios": []}
         with open(self._index_path, encoding="utf-8") as f:
-            return json.load(f)
+            fcntl.flock(f, fcntl.LOCK_SH)
+            try:
+                return json.load(f)
+            finally:
+                fcntl.flock(f, fcntl.LOCK_UN)
 
     def _save(self, data: dict):
         self._audio_dir.mkdir(parents=True, exist_ok=True)
         with open(self._index_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+            fcntl.flock(f, fcntl.LOCK_EX)
+            try:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            finally:
+                fcntl.flock(f, fcntl.LOCK_UN)
 
     def _now_cst(self) -> datetime:
         return datetime.now(timezone(timedelta(hours=8)))
@@ -106,7 +115,7 @@ class AudioLibrary:
         name = re.sub(r'[<>:"/\\|?*]', "", name)
         name = re.sub(r"\s+", " ", name).strip()
 
-        # CJK 截断后去除尾部符号
+        # CJK 截断后去除尾部符号（空白和点号一起清理）
         max_w = 20
         width, truncated = 0, ""
         for ch in name:
@@ -115,7 +124,7 @@ class AudioLibrary:
                 break
             width += w
             truncated += ch
-        name = truncated.rstrip().rstrip(".").rstrip()
+        name = truncated.rstrip(". ")
         return name or "untitled"
 
     # ── CRUD ────────────────────────────────────────────────────────
@@ -133,7 +142,7 @@ class AudioLibrary:
         return audios
 
     def find(self, identifier: str | int) -> dict:
-        """按序号或名称查找。精确匹配优先 → 子串 fallback。"""
+        """按序号或名称查找。精确匹配优先 → 子串按长度最近优先。"""
         audios = self._load().get("audios", [])
         if not audios:
             raise CoreError("音频库为空")
@@ -144,19 +153,26 @@ class AudioLibrary:
             if 0 <= idx < len(audios):
                 return audios[idx]
 
-        # 字符串匹配：精确优先
+        # 字符串匹配
         if isinstance(identifier, str):
             id_lower = identifier.lower()
-            # 精确匹配
+            # 第1轮：精确匹配
             for a in audios:
                 for key in ("name", "ascii_name"):
                     if a.get(key, "").lower() == id_lower:
                         return a
-            # 子串模糊
+            # 第2轮：子串匹配 — 取长度最接近的（最短优先）
+            matches = []
             for a in audios:
                 for key in ("name", "ascii_name"):
-                    if id_lower in a.get(key, "").lower():
-                        return a
+                    val = a.get(key, "").lower()
+                    if id_lower in val and id_lower != val:
+                        matches.append((len(val), a))
+                        break
+            if matches:
+                # 取最短但最精确的匹配
+                matches.sort(key=lambda x: x[0])
+                return matches[0][1]
 
         raise CoreError(f"未找到音频: {identifier}")
 
@@ -168,7 +184,9 @@ class AudioLibrary:
 
     def remove(self, identifier: str | int) -> dict:
         """删除条目 + 清理物理文件。返回被删除的 dict。"""
-        audios = self._load().get("audios", [])
+        # 一次性加载索引
+        index = self._load()
+        audios = index.get("audios", [])
 
         target_idx = None
         if isinstance(identifier, int) or (isinstance(identifier, str) and identifier.isdigit()):
@@ -191,21 +209,24 @@ class AudioLibrary:
 
         audio = audios.pop(target_idx)
 
-        # 删除物理文件（兼容旧索引多种 key）
+        # 删除物理文件（校验路径必须在 audio_dir 内）
         deleted_files = []
         for key in ("file", "send_file", "ogg_file", "audio_path", "file_path"):
             fpath = audio.get(key)
             if fpath:
-                p = Path(fpath)
-                if p.exists():
+                p = Path(fpath).resolve()
+                try:
+                    p.relative_to(self._audio_dir)  # 路径遍历防护
+                except ValueError:
+                    continue  # 跳过越界路径
+                if p.exists() and p.is_file():
                     try:
                         p.unlink()
                         deleted_files.append(str(p))
                     except OSError:
                         pass
 
-        # 保存更新后的索引
-        index = self._load()
+        # 保存更新后的索引（只用一次，复用已加载的 index）
         index["audios"] = audios
         self._save(index)
 

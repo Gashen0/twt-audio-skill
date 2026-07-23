@@ -4,6 +4,7 @@
 外部只需要 `from scripts.core import TwtAudioCore`。
 """
 
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -12,6 +13,8 @@ from .config import ConfigLoader
 from .x_client import XClient
 from .tts import TTSEngine
 from .library import AudioLibrary
+
+__all__ = ["TwtAudioCore", "CoreError"]
 
 
 class TwtAudioCore:
@@ -45,6 +48,20 @@ class TwtAudioCore:
             max_filename_len=self._cfg.max_filename_len,
         )
 
+        # 索引缓存（惰性加载，供 add_tweet 流程复用）
+        self._index_cache: Optional[list[dict]] = None
+
+    # ── 索引缓存管理 ────────────────────────────────────────────────
+
+    def _invalidate_cache(self):
+        self._index_cache = None
+
+    def _get_audios(self) -> list[dict]:
+        if self._index_cache is None:
+            index = self._lib._load()
+            self._index_cache = index.get("audios", [])
+        return self._index_cache
+
     # ── 配置检查 ────────────────────────────────────────────────────
 
     def check_config(self) -> dict:
@@ -71,25 +88,27 @@ class TwtAudioCore:
     def add_tweet(self, tweet_input: str, voice: Optional[str] = None,
                   ascii_name_override: Optional[str] = None,
                   rate: Optional[str] = None) -> AddResult:
-        """完整流程：提取ID → 去重检查 → 抓取推文 → TTS → 入库。"""
+        """完整流程：提取ID → 去重检查 → 抓取推文 → TTS → 入库。
+        全程最多加载一次索引。"""
         try:
             tweet_id = self.extract_tweet_id(tweet_input)
         except CoreError as e:
             return AddResult(success=False, error=str(e))
 
-        # 去重检查（只用一次索引加载）
-        dup = self._lib.tweet_id_exists(tweet_id)
-        if dup:
-            return AddResult(
-                success=True,
-                name=dup.get("name", dup.get("ascii_name", "")),
-                ascii_name=dup.get("ascii_name", ""),
-                file=dup.get("send_file") or dup.get("file", ""),
-                duration=dup.get("duration", 0),
-                tweet_id=str(tweet_id),
-                author=dup.get("author", ""),
-                duplicate=True,
-            )
+        # 去重检查（使用缓存）
+        audios = self._get_audios()
+        for a in audios:
+            if a.get("tweet_id") == str(tweet_id):
+                return AddResult(
+                    success=True,
+                    name=a.get("name", a.get("ascii_name", "")),
+                    ascii_name=a.get("ascii_name", ""),
+                    file=a.get("send_file") or a.get("file", ""),
+                    duration=a.get("duration", 0),
+                    tweet_id=str(tweet_id),
+                    author=a.get("author", ""),
+                    duplicate=True,
+                )
 
         # 抓取
         try:
@@ -107,16 +126,16 @@ class TwtAudioCore:
 
         # 命名
         display_name = self._lib.sanitize_display_name(text, author, article_title)
+
         if ascii_name_override:
             ascii_name = re.sub(r"[^a-zA-Z0-9_-]", "", ascii_name_override)[:self._cfg.max_filename_len]
         else:
             ascii_name = self._lib.make_ascii_filename(display_name, text, article_title)
 
-        # ASCII 文件名去重
-        import re
+        # ASCII 文件名去重（使用缓存）
         base = ascii_name
         counter = 2
-        while self._lib.ascii_name_exists(ascii_name):
+        while any(a.get("ascii_name") == ascii_name for a in audios):
             ascii_name = f"{base}_{counter}"
             counter += 1
 
@@ -149,6 +168,7 @@ class TwtAudioCore:
             "created_at": self._lib._now_cst().strftime("%Y-%m-%d %H:%M"),
         }
         self._lib.add_entry(entry)
+        self._invalidate_cache()  # 新增后失效缓存
 
         return AddResult(
             success=True,
@@ -163,6 +183,7 @@ class TwtAudioCore:
     # ── 音频库操作 ──────────────────────────────────────────────────
 
     def list_audios(self) -> list[dict]:
+        self._invalidate_cache()  # 确保最新
         return self._lib.list_all()
 
     def get_audio(self, identifier: str | int) -> dict:
@@ -173,7 +194,9 @@ class TwtAudioCore:
         return r
 
     def delete_audio(self, identifier: str | int) -> dict:
-        return self._lib.remove(identifier)
+        result = self._lib.remove(identifier)
+        self._invalidate_cache()
+        return result
 
     # ── 语言 / 时长 工具 ────────────────────────────────────────────
 
