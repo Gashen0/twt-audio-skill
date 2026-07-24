@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""twt-audio-mcp CLI — 薄包装层，调用 core，负责用户交互打印。"""
+"""twt-audio-skill CLI — 薄包装层，调用 core，负责用户交互打印。"""
 
 import argparse
 import json

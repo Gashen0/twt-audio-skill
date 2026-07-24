@@ -10,7 +10,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![AI Skill](https://img.shields.io/badge/AI-Skill-brightgreen)](SKILL.md)
 [![Edge-TTS](https://img.shields.io/badge/TTS-Edge--TTS-orange)](https://github.com/rany2/edge-tts)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/Gashen0/twt-audio-mcp/pulls)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/Gashen0/twt-audio-skill/pulls)
 
 ---
 
@@ -26,7 +26,7 @@
 > **Long read on the commute — can't stare at a screen?**
 > **Cooking, working out, or in bed — wish you could *listen* to tweets?**
 
-**twt-audio-mcp** gives your AI assistant one more skill: grab any Twitter/X tweet (including long-form Articles), turn it into MP3, and read it aloud. No paid APIs, fully free.
+**twt-audio-skill** gives your AI assistant one more skill: grab any Twitter/X tweet (including long-form Articles), turn it into MP3, and read it aloud. No paid APIs, fully free.
 
 ---
 
@@ -56,8 +56,8 @@
 
 ```bash
 # 1. Clone
-git clone https://github.com/Gashen0/twt-audio-mcp.git
-cd twt-audio-mcp
+git clone https://github.com/Gashen0/twt-audio-skill.git
+cd twt-audio-skill
 
 # 2. One-click install
 bash setup.sh
@@ -94,7 +94,7 @@ Edit `data/secrets/x_cookies.json`:
     "twt-audio": {
       "command": "python",
       "args": ["-m", "scripts.server"],
-      "cwd": "/absolute/path/twt-audio-mcp"
+      "cwd": "/absolute/path/twt-audio-skill"
     }
   }
 }
@@ -145,7 +145,7 @@ python scripts/twt_audio.py delete 1
 ## 📁 Project Structure
 
 ```
-twt-audio-mcp/
+twt-audio-skill/
 ├── setup.sh                  # One-click installer
 ├── config.yaml               # Configuration
 ├── requirements.txt          # Python dependencies
@@ -192,6 +192,6 @@ MIT License
 
 ### ⭐ Star this repo if you find it useful!
 
-[![Star](https://img.shields.io/github/stars/Gashen0/twt-audio-mcp?style=social)](https://github.com/Gashen0/twt-audio-mcp)
+[![Star](https://img.shields.io/github/stars/Gashen0/twt-audio-skill?style=social)](https://github.com/Gashen0/twt-audio-skill)
 
 </div>

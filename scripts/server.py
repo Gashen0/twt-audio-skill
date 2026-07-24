@@ -1,4 +1,4 @@
-"""twt-audio-mcp: MCP Server — 薄协议层，调用 core，不 redirect_stdout。"""
+"""twt-audio-skill: MCP Server — 薄协议层，调用 core，不 redirect_stdout。"""
 
 import sys
 from pathlib import Path
@@ -94,9 +94,9 @@ def delete_audio(index_or_name: str) -> str:
 
 @mcp.tool()
 def check_status() -> str:
-    """Check twt-audio-mcp configuration — Twitter Cookie & dependencies"""
+    """Check twt-audio-skill configuration — Twitter Cookie & dependencies"""
     status = _core.check_config()
-    parts = ["twt-audio-mcp status"] if status["ok"] else ["Configuration incomplete"]
+    parts = ["twt-audio-skill status"] if status["ok"] else ["Configuration incomplete"]
     for name, check in status["checks"].items():
         icon = "✅" if check.get("ok") else "❌"
         if "count" in check:
@@ -111,5 +111,5 @@ def check_status() -> str:
 
 
 if __name__ == "__main__":
-    print("twt-audio-mcp server starting...")
+    print("twt-audio-skill server starting...")
     mcp.run()

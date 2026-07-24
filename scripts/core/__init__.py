@@ -1,4 +1,4 @@
-"""core — twt-audio-mcp 核心库。
+"""core — twt-audio-skill 核心库。
 
 组合模式：ConfigLoader + XClient + TTSEngine + AudioLibrary → TwtAudioCore。
 外部只需要 `from scripts.core import TwtAudioCore`。

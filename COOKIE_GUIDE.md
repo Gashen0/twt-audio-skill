@@ -1,6 +1,6 @@
 # 🍪 Twitter Cookie 获取指南
 
-twt-audio-mcp 需要你的 Twitter Cookie 来抓取推文。  
+twt-audio-skill 需要你的 Twitter Cookie 来抓取推文。  
 **这些 Cookie 只存本地，不会上传，不会泄露。**
 
 ---

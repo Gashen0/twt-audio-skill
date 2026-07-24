@@ -1,4 +1,4 @@
-"""twt-audio-mcp 基础单元测试。"""
+"""twt-audio-skill 基础单元测试。"""
 
 import json
 import tempfile

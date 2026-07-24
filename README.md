@@ -61,8 +61,8 @@ AI 会自动读 `SKILL.md`，自己装依赖、自己配环境、自己用。
 
 ```bash
 # 1. 克隆 + 安装
-git clone https://github.com/Gashen0/twt-audio-mcp.git
-cd twt-audio-mcp
+git clone https://github.com/Gashen0/twt-audio-skill.git
+cd twt-audio-skill
 bash setup.sh
 
 # 2. 配 Twitter Cookie（跟着引导走）
@@ -107,7 +107,7 @@ bash setup.sh --cookie
 ## 📁 项目结构（给 AI 智能体看）
 
 ```
-twt-audio-mcp/
+twt-audio-skill/
 ├── SKILL.md           ← 🎯 核心！AI 智能体说明书
 ├── _meta.json         ← 🏷️ Skill 元数据（版本、标签、能力）
 ├── README.md          ← 人类友好说明
@@ -151,6 +151,6 @@ MIT License
 
 **你不是在装一个工具。你是在给你的 AI 一个 Skill。**
 
-[![Star](https://img.shields.io/github/stars/Gashen0/twt-audio-mcp?style=social)](https://github.com/Gashen0/twt-audio-mcp)
+[![Star](https://img.shields.io/github/stars/Gashen0/twt-audio-skill?style=social)](https://github.com/Gashen0/twt-audio-skill)
 
 </div>

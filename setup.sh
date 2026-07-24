@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ===============================================================
-# twt-audio-mcp — 一键安装脚本
+# twt-audio-skill — 一键安装脚本
 # ===============================================================
 # 用法:
 #   bash setup.sh              # 安装依赖 + 创建目录
@@ -11,7 +11,7 @@
 set -e
 cd "$(dirname "$0")"
 PROJECT_DIR="$(pwd)"
-echo "📦 twt-audio-mcp"
+echo "📦 twt-audio-skill"
 echo "   项目目录: $PROJECT_DIR"
 echo ""
 

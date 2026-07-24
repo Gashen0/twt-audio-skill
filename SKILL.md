@@ -104,7 +104,7 @@ python scripts/twt_audio.py delete 1
     "twt-audio": {
       "command": "python",
       "args": ["-m", "scripts.server"],
-      "cwd": "/绝对路径/twt-audio-mcp"
+      "cwd": "/绝对路径/twt-audio-skill"
     }
   }
 }
@@ -155,7 +155,7 @@ twitter:
 ## 目录结构
 
 ```
-twt-audio-mcp/
+twt-audio-skill/
 ├── SKILL.md              # 🎯 本文件 — AI 智能体的使用说明书
 ├── _meta.json            # Skill 元数据
 ├── README.md             # 人类友好的说明

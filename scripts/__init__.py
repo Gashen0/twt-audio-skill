@@ -1,1 +1,1 @@
-"""scripts — twt-audio-mcp 包入口。"""
+"""scripts — twt-audio-skill 包入口。"""

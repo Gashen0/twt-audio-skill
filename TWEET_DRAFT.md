@@ -8,7 +8,7 @@
 这是一个 **AI Skill**——可以直接交给任何 AI 智能体用的技能包。
 
 👇
-github.com/Gashen0/twt-audio-mcp
+github.com/Gashen0/twt-audio-skill
 
 把链接丢给 Claude / Codex / Cursor / 任何 AI：
 → AI 自动读文档、装依赖、配环境
@@ -37,7 +37,7 @@ twt-audio — 把你的 X/Twitter 推文转成 MP3
 🔹 做饭健身 → 听干货
 
 👇
-github.com/Gashen0/twt-audio-mcp
+github.com/Gashen0/twt-audio-skill
 
 #AISkill #AI #推文转音频
 
@@ -59,7 +59,7 @@ Driving? Listen instead of scrolling.
 Cooking? Listen while cooking.
 
 👇
-github.com/Gashen0/twt-audio-mcp
+github.com/Gashen0/twt-audio-skill
 
 This isn't installing a tool. It's giving your AI a superpower.
 
