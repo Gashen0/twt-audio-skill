@@ -1,0 +1,16 @@
+{
+  "ownerId": "Gashen0",
+  "slug": "twt-audio",
+  "version": "2.0.0",
+  "description": "X/Twitter 推文转音频 Skill — AI 智能体可直接使用，抓取推文全文 → Edge-TTS 生成 MP3 → 解放双手和眼睛",
+  "publishedAt": 1747305600000,
+  "tags": ["twitter", "audio", "tts", "mcp", "edge-tts", "skill"],
+  "license": "MIT",
+  "author": "Gashen0",
+  "capabilities": {
+    "cli": true,
+    "mcp": true,
+    "platforms": ["claude", "cursor", "cline", "codex", "any-ai-agent"]
+  },
+  "ai_readable": true
+}

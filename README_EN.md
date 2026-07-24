@@ -1,14 +1,14 @@
 <div align="center">
 
-# 🎙️ twt-audio-mcp
+# 🎙️ twt-audio
 
-### Your AI Storyteller: drop a tweet link, AI reads it aloud
+### This is an **AI Skill** — Turn X/Twitter tweets into MP3 audio
 
-**Works with any MCP-compatible AI assistant — Claude / Cursor / OpenClaw / Cline**
+**Any AI agent can use it directly. You're not installing a tool — you're giving your AI a superpower.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
-[![MCP](https://img.shields.io/badge/MCP-ready-green)](https://modelcontextprotocol.io)
+[![AI Skill](https://img.shields.io/badge/AI-Skill-brightgreen)](SKILL.md)
 [![Edge-TTS](https://img.shields.io/badge/TTS-Edge--TTS-orange)](https://github.com/rany2/edge-tts)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/Gashen0/twt-audio-mcp/pulls)
 
